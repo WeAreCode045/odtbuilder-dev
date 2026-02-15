@@ -1,5 +1,6 @@
 import React from 'react';
 import { useEditor, Element } from '@craftjs/core';
+import PlaceholdersPanel from './placeholders/PlaceholdersPanel';
 import { Type, AlignLeft, User, LayoutTemplate, Image as ImageIcon, Columns, Square } from 'lucide-react';
 
 // Import components to create instances for dragging
@@ -11,7 +12,15 @@ import { Rij } from './user/Rij';
 import { Kolom } from './user/Kolom';
 
 export const Toolbox: React.FC = () => {
-  const { connectors } = useEditor();
+  const { connectors, actions, query } = useEditor();
+  const selectedId = (() => {
+    try {
+      const sel = query.getState().events.selected as string[] | undefined;
+      return sel && sel.length ? sel[0] : null;
+    } catch (e) {
+      return null;
+    }
+  })();
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col z-10">
@@ -92,6 +101,18 @@ export const Toolbox: React.FC = () => {
           <span className="text-sm font-medium text-gray-700">Losse Kolom</span>
         </div>
 
+        <div className="pt-3">
+          <PlaceholdersPanel onInsert={(code) => {
+            if (selectedId) {
+              actions.setProp(selectedId, (props: any) => {
+                props.text = (props.text || '') + code;
+              });
+            } else {
+              if (navigator && navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {});
+              alert('Geen tekst geselecteerd — placeholder gekopieerd naar klembord.');
+            }
+          }} />
+        </div>
       </div>
 
       <div className="mt-auto p-4 bg-blue-50 border-t border-blue-100">
