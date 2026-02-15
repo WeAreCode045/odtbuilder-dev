@@ -145,6 +145,13 @@ export const Header: React.FC = () => {
             if (colProps) {
                 const width = colProps.getAttribute("style:column-width");
                 if (width) styleData.columnWidthPx = convertToPx(width);
+                
+                const relWidth = colProps.getAttribute("style:rel-column-width");
+                if (relWidth) {
+                   // rel-column-width is typically "1234*"
+                   const stars = parseFloat(relWidth.replace('*', ''));
+                   if (!isNaN(stars)) styleData.relWidth = stars;
+                }
             }
             
             styles[name] = styleData;
@@ -154,7 +161,6 @@ export const Header: React.FC = () => {
         Array.from(automaticStyles.getElementsByTagName("style:style")).forEach(parseStyleNode);
       }
       
-      // Also parse common styles (less common for auto-gen but good for completeness)
       const officeStyles = xmlDoc.getElementsByTagName("office:styles")[0];
       if (officeStyles) {
           Array.from(officeStyles.getElementsByTagName("style:style")).forEach(parseStyleNode);
@@ -197,11 +203,9 @@ export const Header: React.FC = () => {
                 const mime = href.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
                 const src = `data:${mime};base64,${base64}`;
                 
-                // Try to get width from frame style or attributes
                 let width = "100%";
                 const frameWidth = frame.getAttribute("svg:width");
                 if (frameWidth) {
-                   // Convert cm to approx % relative to 17cm (A4 content)
                    const px = convertToPx(frameWidth) || 0;
                    const totalW = convertToPx("17cm") || 642;
                    if (px > 0) {
@@ -262,8 +266,6 @@ export const Header: React.FC = () => {
         } else if (tagName === "text:p") {
              const childNodes = Array.from(xmlNode.childNodes);
              let currentText = "";
-             // Capture script node if present
-             let scriptFound: {lang: string, content: string} | null = null;
 
              const flushText = () => {
                  if (currentText.trim()) {
@@ -332,11 +334,10 @@ export const Header: React.FC = () => {
              flushText();
 
         } else if (tagName === "table:table") {
-            // Determine Table Margins (my)
             let my = 0;
             if (style.tableMarginTop || style.tableMarginBottom) {
                 const totalMarginPx = (style.tableMarginTop || 0) + (style.tableMarginBottom || 0);
-                my = pxToUnits(totalMarginPx / 2); // Average top/bottom or just sum
+                my = pxToUnits(totalMarginPx / 2);
             }
             
             const tableBg = style.backgroundColor || "transparent";
@@ -346,31 +347,50 @@ export const Header: React.FC = () => {
                 (n) => n.nodeType === 1 && (n as Element).tagName === "table:table-column"
             ) as Element[];
 
-            const colWidthsPx: number[] = [];
+            // Store widths as 'units' relative to total
+            // If absolute, store pixels. If relative, store stars.
+            const colWidths: { type: 'px'|'rel', val: number }[] = [];
             
             for (const col of colElements) {
                 const repeated = parseInt(col.getAttribute("table:number-columns-repeated") || "1");
                 const colStyleName = col.getAttribute("table:style-name");
-                let pxWidth = 0;
                 
-                if (colStyleName && styles[colStyleName]?.columnWidthPx) {
-                    pxWidth = styles[colStyleName].columnWidthPx;
+                let widthObj: { type: 'px'|'rel', val: number } = { type: 'px', val: 0 };
+                
+                if (colStyleName && styles[colStyleName]) {
+                    const s = styles[colStyleName];
+                    if (s.relWidth) {
+                        widthObj = { type: 'rel', val: s.relWidth };
+                    } else if (s.columnWidthPx) {
+                        widthObj = { type: 'px', val: s.columnWidthPx };
+                    }
                 }
                 
                 for (let i = 0; i < repeated; i++) {
-                    colWidthsPx.push(pxWidth);
+                    colWidths.push(widthObj);
                 }
             }
 
-            // Total Width for percentage calc
-            // If some cols have 0 width (no style), we try to assume equal distribution of remaining space?
-            // For simplicity, let's sum knowns. If total is 0, we can't do %.
-            let totalTableWidthPx = colWidthsPx.reduce((a, b) => a + b, 0);
+            // Calculate total relative units and total pixels
+            let totalRel = 0;
+            let totalPx = 0;
+            colWidths.forEach(c => {
+                if (c.type === 'rel') totalRel += c.val;
+                if (c.type === 'px') totalPx += c.val;
+            });
             
-            // If total is 0, assume standard A4 width (~642px for 17cm)
-            if (totalTableWidthPx === 0) totalTableWidthPx = 642; 
+            // Heuristic: If we have relative widths, treat them as dominant.
+            // If only pixels, treat as fixed.
+            // If mixed, it's complex, but let's approximate relative part as remaining space?
+            // Simplified: If ANY relative width exists, we use relative distribution.
+            // If only pixels, we sum them up.
 
-            // Handle Rows
+            let totalTableScale = totalPx;
+            if (totalRel > 0) {
+                 totalTableScale = totalRel; 
+            }
+            if (totalTableScale === 0) totalTableScale = 1; // avoid div by zero
+
             const rows = Array.from(xmlNode.childNodes).filter(
                 (n) => n.nodeType === 1 && (n as Element).tagName === "table:table-row"
             ) as Element[];
@@ -400,16 +420,14 @@ export const Header: React.FC = () => {
                     const tagName = cell.tagName;
                     const colspan = parseInt(cell.getAttribute("table:number-columns-spanned") || "1");
                     
-                    // Logic for covered cells (from rowspan)
                     if (tagName === "table:covered-table-cell") {
-                        // It occupies a slot but has no content (usually vertically merged). 
-                        // We must render a placeholder column to keep layout
-                        // Calculate width for this slot
-                        let cellWidthPx = 0;
+                        let spanVal = 0;
                         for (let k = 0; k < colspan; k++) {
-                            cellWidthPx += colWidthsPx[currentColumnIndex + k] || (totalTableWidthPx / colWidthsPx.length);
+                            const c = colWidths[currentColumnIndex + k];
+                            if (!c) continue;
+                            spanVal += c.val;
                         }
-                        const widthPercent = (cellWidthPx / totalTableWidthPx) * 100;
+                        const widthPercent = (spanVal / totalTableScale) * 100;
 
                         const colId = generateId();
                         newNodes[colId] = {
@@ -428,21 +446,27 @@ export const Header: React.FC = () => {
                         continue;
                     }
 
-                    // Real Cell
                     const cellStyleName = cell.getAttribute("table:style-name");
                     const cellStyle = cellStyleName ? styles[cellStyleName] || {} : {};
                     
-                    // Calculate Width
-                    let cellWidthPx = 0;
+                    // Calculate Width based on type
+                    let spanVal = 0;
                     for (let k = 0; k < colspan; k++) {
-                         // Default to equal share if unknown
-                        const w = colWidthsPx[currentColumnIndex + k];
-                        cellWidthPx += w ? w : (totalTableWidthPx / Math.max(1, colWidthsPx.length));
+                         const c = colWidths[currentColumnIndex + k];
+                         if (c) spanVal += c.val;
+                         else {
+                            // Fallback if no col def: assume even split of remainder?
+                            // Or just 1 unit/px
+                            spanVal += (totalRel > 0 ? (totalTableScale / colWidths.length) : (totalTableScale / Math.max(1, colWidths.length)));
+                         }
                     }
                     
-                    const widthPercent = (cellWidthPx / totalTableWidthPx) * 100;
+                    let widthPercent = (spanVal / totalTableScale) * 100;
                     
-                    const paddingVal = cellStyle.padding !== undefined ? cellStyle.padding : 8; // Default 8px
+                    // Sanity check: if single column and it's basically filling space, force 100
+                    if (colWidths.length === 1 && widthPercent > 95) widthPercent = 100;
+
+                    const paddingVal = cellStyle.padding !== undefined ? cellStyle.padding : 8; 
                     const bgVal = cellStyle.backgroundColor || "transparent";
 
                     const colId = generateId();
@@ -463,7 +487,6 @@ export const Header: React.FC = () => {
                     };
                     newNodes[rowId].nodes.push(colId);
 
-                    // Content
                     const cellContentChildren = Array.from(cell.childNodes);
                     for (const child of cellContentChildren) {
                         if (child.nodeType === 1) {

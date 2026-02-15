@@ -20,6 +20,7 @@ app = FastAPI()
 origins = [
     "http://localhost:3010",
     "http://localhost:3011",
+    "https://docubuild-a4-889067085922.us-west1.run.app",
     "http://localhost:5173",
     "https://odtbuilder.code045.nl",
     "https://odt-generator.code045.nl",
@@ -27,7 +28,7 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -195,8 +196,7 @@ def process_node(node_id, craft_data, parent_element, doc):
                 # 5. Create Frame
                 # Using 'graphic' family for the image style if needed, but Frame props are direct
                 frame_style_name = f"{style_name}_fr"
-                # add_style(doc, frame_style_name, "graphic", graphic_props={...}) 
-
+                
                 frame = Frame(
                     stylename=frame_style_name,
                     width=f"{display_width_cm:.2f}cm", 
@@ -212,7 +212,6 @@ def process_node(node_id, craft_data, parent_element, doc):
                 print(f"Image Export Error: {e}")
                 p.addText(f"[ERROR: {str(e)}]")
         else:
-            # Fallback for empty or external URLs if not handled
             p.addText("[AFBEELDING ZONDER DATA]")
             
         parent_element.addElement(p)
@@ -238,7 +237,7 @@ def process_node(node_id, craft_data, parent_element, doc):
             "margintop": margin_cm,
             "marginbottom": margin_cm,
             "width": "17cm", 
-            "align": "center" # Always center the table itself
+            "align": "center"
         }
         
         if bg_color and bg_color != "transparent":
@@ -283,8 +282,7 @@ def process_node(node_id, craft_data, parent_element, doc):
             col_bg = col.get("props", {}).get("backgroundColor", "transparent")
             cell_style_name = f"{style_name}_cell_{i}"
             
-            # Padding in ODT is padding of the cell content
-            padding_cm = f"{padding / 37.8:.2f}cm" # approx 37.8 px per cm
+            padding_cm = f"{padding / 37.8:.2f}cm"
 
             cell_props = {
                 "padding": padding_cm,
@@ -323,9 +321,6 @@ async def generate_odt(payload: dict):
         if not craft_data: raise HTTPException(status_code=400, detail="No data")
             
         doc = OpenDocumentText()
-        
-        # Add basic font face declarations if needed
-        # (odfpy usually handles this, but we can ensure common fonts are available)
 
         if "ROOT" in craft_data:
             process_node("ROOT", craft_data, doc.text, doc)
