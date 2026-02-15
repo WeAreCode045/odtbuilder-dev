@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNode } from '@craftjs/core';
 import ContentEditable from 'react-contenteditable';
+import PlaceholdersPanel from '../placeholders/PlaceholdersPanel';
 import { AlignLeft, AlignCenter, AlignRight, AlignJustify, Bold, Italic, Underline, Type } from 'lucide-react';
 
 interface TekstProps {
@@ -234,6 +235,19 @@ const TekstSettings = () => {
                 className="w-8 h-8 p-0 border-0 rounded cursor-pointer"
             />
         </div>
+      </div>
+      <div className="border-t pt-3">
+        <PlaceholdersPanel onInsert={(code: string) => {
+          const inserter = (window as any).__odtInsertPlaceholder;
+          if (inserter && typeof inserter === 'function') {
+            inserter(code);
+          } else {
+            // fallback: append to text prop
+            setProp((props: any) => {
+              props.text = (props.text || '') + code;
+            });
+          }
+        }} />
       </div>
     </div>
   );
