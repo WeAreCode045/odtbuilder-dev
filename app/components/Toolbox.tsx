@@ -1,10 +1,26 @@
 import React from 'react';
-import { useEditor } from '@craftjs/core';
-import { Tag, LayoutTemplate } from 'lucide-react';
-import { Placeholder } from './user/Placeholder';
+import { useEditor, Element } from '@craftjs/core';
+import PlaceholdersPanel from './placeholders/PlaceholdersPanel';
+import { Type, AlignLeft, User, LayoutTemplate, Image as ImageIcon, Columns, Square } from 'lucide-react';
+
+// Import components to create instances for dragging
+import { Titel } from './user/Titel';
+import { Tekst } from './user/Tekst';
+import { GastInformatie } from './user/GastInformatie';
+import { Afbeelding } from './user/Afbeelding';
+import { Rij } from './user/Rij';
+import { Kolom } from './user/Kolom';
 
 export const Toolbox: React.FC = () => {
-  const { connectors } = useEditor();
+  const { connectors, actions, query } = useEditor();
+  const selectedId = (() => {
+    try {
+      const sel = query.getState().events.selected as string[] | undefined;
+      return sel && sel.length ? sel[0] : null;
+    } catch (e) {
+      return null;
+    }
+  })();
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col z-10">
@@ -13,16 +29,97 @@ export const Toolbox: React.FC = () => {
       </div>
       
       <div className="p-4 flex flex-col gap-3 overflow-y-auto">
-        <div className="text-xs font-semibold text-gray-400 mt-2 mb-1">Componenten</div>
-
-        <div
+        {/* Basic Text Elements */}
+        <div className="text-xs font-semibold text-gray-400 mt-2 mb-1">Inhoud</div>
+        
+        <div 
           ref={(ref) => {
-            if (ref) connectors.create(ref, <Placeholder text="${guest.firstName} ${guest.lastName}" fontSize={14} color="#4a5568" textAlign="left" fontFamily="inherit" fontWeight="normal" />);
+             if (ref) connectors.create(ref, <Titel text="Nieuwe Titel" fontSize={24} color="#1a202c" textAlign="left" fontFamily="inherit" fontWeight="bold" />);
           }}
-          className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg cursor-grab hover:border-blue-500 hover:shadow-sm transition-all"
+          className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg cursor-grab hover:border-blue-500 hover:shadow-sm transition-all shadow-sm"
         >
-          <Tag size={18} className="text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">Placeholder</span>
+          <Type size={18} className="text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">Titel</span>
+        </div>
+
+        <div 
+          ref={(ref) => {
+            if (ref) connectors.create(ref, <Tekst text="Start met typen..." fontSize={14} color="#4a5568" textAlign="left" fontFamily="inherit" fontWeight="normal" />);
+          }}
+          className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg cursor-grab hover:border-blue-500 hover:shadow-sm transition-all shadow-sm"
+        >
+          <AlignLeft size={18} className="text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">Tekst</span>
+        </div>
+
+        <div 
+          ref={(ref) => {
+            if (ref) connectors.create(ref, <GastInformatie field="firstname" />);
+          }}
+          className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg cursor-grab hover:border-blue-500 hover:shadow-sm transition-all shadow-sm"
+        >
+          <User size={18} className="text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">Gast Info</span>
+        </div>
+
+        <div 
+          ref={(ref) => {
+            if (ref) connectors.create(ref, <Afbeelding src="" width="100%" align="center" />);
+          }}
+          className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg cursor-grab hover:border-blue-500 hover:shadow-sm transition-all shadow-sm"
+        >
+          <ImageIcon size={18} className="text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">Afbeelding</span>
+        </div>
+
+        {/* Media & Layout */}
+        <div className="text-xs font-semibold text-gray-400 mt-4 mb-1">Structuur</div>
+
+        <div 
+          ref={(ref) => {
+            // Default 2 column layout as starter
+            if (ref) connectors.create(ref, 
+                <Element is={Rij} canvas gap={2}>
+                    <Element is={Kolom} canvas width="50%" padding={8} />
+                    <Element is={Kolom} canvas width="50%" padding={8} />
+                </Element>
+            );
+          }}
+          className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg cursor-grab hover:border-blue-500 hover:shadow-sm transition-all shadow-sm"
+        >
+          <Columns size={18} className="text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">Sectie (Rij)</span>
+        </div>
+
+        <div 
+          ref={(ref) => {
+            if (ref) connectors.create(ref, <Element is={Kolom} canvas width="auto" padding={8} />);
+          }}
+          className="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-lg cursor-grab hover:border-blue-500 hover:shadow-sm transition-all shadow-sm"
+        >
+          <Square size={18} className="text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">Losse Kolom</span>
+        </div>
+
+        <div className="pt-3">
+          <PlaceholdersPanel onInsert={(code) => {
+            // Prefer inserting at the current caret if a Tekst component registered the handler
+            const inserter = (window as any).__odtInsertPlaceholder;
+            if (inserter && typeof inserter === 'function') {
+              inserter(code);
+              return;
+            }
+
+            // Fallback: append to selected node's text prop
+            if (selectedId) {
+              actions.setProp(selectedId, (props: any) => {
+                props.text = (props.text || '') + code;
+              });
+            } else {
+              if (navigator && navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {});
+              alert('Geen tekst geselecteerd — placeholder gekopieerd naar klembord.');
+            }
+          }} />
         </div>
       </div>
 
