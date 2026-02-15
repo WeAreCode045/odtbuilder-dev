@@ -12,6 +12,8 @@ import io
 import json
 import re
 import base64
+import traceback
+import html
 from PIL import Image as PILImage
 
 app = FastAPI()
@@ -58,13 +60,34 @@ def add_style(doc, name, family, text_props=None, paragraph_props=None, table_co
 
 def clean_html_text(raw_html):
     if not raw_html: return ""
-    text = re.sub(r'<br\s*/?>', '\n', str(raw_html))
+    text = str(raw_html)
+    text = re.sub(r'<br\s*/?>', '\n', text)
     text = re.sub(r'</div>', '\n', text)
     text = re.sub(r'</p>', '\n', text)
     cleanr = re.compile('<.*?>')
     cleantext = re.sub(cleanr, '', text)
-    cleantext = cleantext.replace('&nbsp;', ' ')
+    # Unescape HTML entities (e.g. &nbsp; -> \xa0, &amp; -> &)
+    cleantext = html.unescape(cleantext) 
     return cleantext.strip()
+
+def parse_size_to_pt(size_input, default_px=14):
+    try:
+        val = 0.0
+        if isinstance(size_input, (int, float)):
+            val = float(size_input)
+        elif isinstance(size_input, str):
+            match = re.match(r"([\d\.]+)", size_input)
+            if match:
+                val = float(match.group(1))
+            else:
+                val = float(default_px)
+        else:
+             val = float(default_px)
+        
+        # Convert px to pt (approx 0.75)
+        return val * 0.75
+    except:
+        return float(default_px) * 0.75
 
 def process_node(node_id, craft_data, parent_element, doc):
     node = craft_data.get(node_id)
@@ -85,14 +108,15 @@ def process_node(node_id, craft_data, parent_element, doc):
 
     # --- TITEL ---
     if resolved_name == "Titel":
-        font_size = props.get("fontSize", 24)
+        font_size_pt = parse_size_to_pt(props.get("fontSize"), 24)
+        
         color = props.get("color", "#000000")
         align = props.get("textAlign", "left")
         weight = props.get("fontWeight", "bold")
         family = props.get("fontFamily", "Arial")
 
         text_props = {
-            "fontsize": f"{font_size}pt",
+            "fontsize": f"{font_size_pt:.1f}pt",
             "color": color,
             "fontweight": weight,
             "fontfamily": family
@@ -104,19 +128,20 @@ def process_node(node_id, craft_data, parent_element, doc):
         
         add_style(doc, style_name, "paragraph", text_props=text_props, paragraph_props=para_props)
         h = H(outlinelevel=1, stylename=style_name)
-        h.addText(str(props.get("text", "Titel")))
+        h.addText(clean_html_text(props.get("text", "Titel")))
         parent_element.addElement(h)
 
     # --- TEKST ---
     elif resolved_name == "Tekst":
-        font_size = props.get("fontSize", 14)
+        font_size_pt = parse_size_to_pt(props.get("fontSize"), 14)
+        
         color = props.get("color", "#000000")
         align = props.get("textAlign", "left")
         weight = props.get("fontWeight", "normal")
         family = props.get("fontFamily", "Arial")
         
         text_props = {
-            "fontsize": f"{font_size}pt",
+            "fontsize": f"{font_size_pt:.1f}pt",
             "color": color,
             "fontweight": weight,
             "fontfamily": family
@@ -124,7 +149,7 @@ def process_node(node_id, craft_data, parent_element, doc):
         para_props = {
             "textalign": align,
             "marginbottom": "0.2cm",
-            "lineheight": "1.5"
+            "lineheight": "150%" 
         }
         
         add_style(doc, style_name, "paragraph", text_props=text_props, paragraph_props=para_props)
@@ -163,19 +188,34 @@ def process_node(node_id, craft_data, parent_element, doc):
         if src and src.startswith("data:image"):
             try:
                 # 1. Decode Image
-                header, encoded = src.split(",", 1)
-                mimetype = header.split(";")[0].split(":")[1]
+                header = ""
+                encoded = ""
+                
+                if "," in src:
+                    header, encoded = src.split(",", 1)
+                else:
+                    encoded = src
+                    header = "data:image/jpeg;base64" # fallback
+                
+                # Basic cleanup
+                encoded = encoded.strip().replace('\n', '').replace('\r', '')
+                
+                mimetype = "image/jpeg"
+                if ":" in header and ";" in header:
+                   parts = header.split(";")
+                   if len(parts) > 0 and ":" in parts[0]:
+                       mimetype = parts[0].split(":")[1]
+
                 image_data = base64.b64decode(encoded)
                 
-                # 2. Get Dimensions using Pillow
+                # 2. Verify with Pillow
                 pil_img = PILImage.open(io.BytesIO(image_data))
                 px_width, px_height = pil_img.size
+                
                 aspect_ratio = px_height / px_width if px_width > 0 else 1
 
                 # 3. Calculate Display Dimensions (cm)
-                # Max width for A4 content is approx 17cm
                 MAX_WIDTH_CM = 17.0
-                
                 display_width_cm = MAX_WIDTH_CM
                 
                 if width_prop != "auto" and width_prop.endswith("%"):
@@ -188,14 +228,16 @@ def process_node(node_id, craft_data, parent_element, doc):
                 display_height_cm = display_width_cm * aspect_ratio
 
                 # 4. Add to ODT
-                image_ext = mimetype.split('/')[1]
+                image_ext = mimetype.split('/')[1] if '/' in mimetype else 'jpg'
                 if image_ext == 'jpeg': image_ext = 'jpg'
+                if image_ext == 'svg+xml': image_ext = 'svg'
                 
-                image_name = f"Pictures/{node_id}.{image_ext}"
+                safe_id = "".join([c for c in node_id if c.isalnum() or c in ('-', '_')])
+                image_name = f"Pictures/{safe_id}.{image_ext}"
+                
                 href = doc.addPicture(image_name, mimetype, image_data)
                 
                 # 5. Create Frame
-                # Using 'graphic' family for the image style if needed, but Frame props are direct
                 frame_style_name = f"{style_name}_fr"
                 
                 frame = Frame(
@@ -205,13 +247,16 @@ def process_node(node_id, craft_data, parent_element, doc):
                     anchortype="as-char"
                 )
                 
-                img = DrawImage(href=href, type="simple", show="embed", actuate="onLoad")
+                img = DrawImage(href=str(href), type="simple", show="embed", actuate="onLoad")
+                
                 frame.addElement(img)
                 p.addElement(frame)
 
             except Exception as e:
-                print(f"Image Export Error: {e}")
-                p.addText(f"[ERROR: {str(e)}]")
+                # Log invalid image but continue document generation
+                print(f"Image Export Error: {str(e)}")
+                # We do not print tracebacks into the document anymore to avoid "weird lines" if they look like code
+                p.addText("[AFBEELDING ERROR]")
         else:
             p.addText("[AFBEELDING ZONDER DATA]")
             
@@ -257,21 +302,45 @@ def process_node(node_id, craft_data, parent_element, doc):
         if not columns:
             return 
 
-        # 2. Add ODT Columns
-        for i, col in enumerate(columns):
-            col_width = col.get("props", {}).get("width", "auto")
-            col_style_name = f"{style_name}_col_{i}"
-            
-            tcp = {}
-            if col_width != "auto" and "%" in col_width:
+        # Calculate Column Widths for ODT (Relative Stars)
+        total_pct = 0
+        auto_count = 0
+        col_definitions = []
+        
+        for col in columns:
+            width_str = col.get("props", {}).get("width", "auto")
+            if width_str != "auto" and "%" in width_str:
                 try:
-                    pct = float(col_width.replace("%", ""))
-                    width_cm = (pct / 100) * 17.0
-                    tcp["columnwidth"] = f"{width_cm}cm"
+                    pct = float(width_str.replace("%", ""))
+                    col_definitions.append({"type": "pct", "val": pct})
+                    total_pct += pct
                 except:
-                    tcp["relcolumnwidth"] = "1*"
+                    col_definitions.append({"type": "auto"})
+                    auto_count += 1
             else:
-                 tcp["relcolumnwidth"] = "1*"
+                col_definitions.append({"type": "auto"})
+                auto_count += 1
+        
+        remaining = 100.0 - total_pct
+        if remaining < 0: remaining = 0
+        
+        auto_share = 0
+        if auto_count > 0:
+            auto_share = remaining / auto_count
+
+        # 2. Add ODT Columns
+        for i, col_def in enumerate(col_definitions):
+            width_val = 0
+            if col_def["type"] == "pct":
+                width_val = col_def["val"]
+            else:
+                width_val = auto_share
+            
+            # Use relative width with * (star) notation
+            rel_width = f"{int(width_val * 10)}*"
+            
+            col_style_name = f"{style_name}_col_{i}"
+            tcp = {"relcolumnwidth": rel_width}
             
             add_style(doc, col_style_name, "table-column", table_col_props=tcp)
             table.addElement(TableColumn(stylename=col_style_name))
