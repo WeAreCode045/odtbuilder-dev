@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Installeer odfpy en andere dependencies
-RUN pip install --no-cache-dir odfpy fastapi uvicorn pillow
+RUN pip install --no-cache-dir odfpy fastapi uvicorn pillow python-multipart
 
 # Kopieer de backend broncode (context staat op ./backend)
 COPY . .
