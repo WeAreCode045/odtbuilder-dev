@@ -1,19 +1,19 @@
 import React from 'react';
 import { Editor, Frame, Element } from '@craftjs/core';
-import { Header } from './components/Header';
-import { Toolbox } from './components/Toolbox';
-import { SettingsPanel } from './components/SettingsPanel';
-import { Viewport } from './components/Viewport';
+import { Header } from './app/components/Header';
+import { Toolbox } from './app/components/Toolbox';
+import { SettingsPanel } from './app/components/SettingsPanel';
+import { Viewport } from './app/components/Viewport';
 
 // User Components
-import { Document } from './components/user/Document';
-import { Page } from './components/user/Page';
-import { Titel } from './components/user/Titel';
-import { Tekst } from './components/user/Tekst';
-import { GastInformatie } from './components/user/GastInformatie';
-import { Afbeelding } from './components/user/Afbeelding';
-import { Rij } from './components/user/Rij';
-import { Kolom } from './components/user/Kolom';
+import { Document } from './app/components/user/Document';
+import { Page } from './app/components/user/Page';
+import { Titel } from './app/components/user/Titel';
+import { Tekst } from './app/components/user/Tekst';
+import { GastInformatie } from './app/components/user/GastInformatie';
+import { Afbeelding } from './app/components/user/Afbeelding';
+import { Rij } from './app/components/user/Rij';
+import { Kolom } from './app/components/user/Kolom';
 
 const resolver = {
   Document,

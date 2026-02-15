@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
 from odf.opendocument import OpenDocumentText
 from odf.style import Style, TextProperties, ParagraphProperties, TableColumnProperties, TableCellProperties, TableProperties, GraphicProperties
 from odf.text import P, H, Span, LineBreak
@@ -14,6 +14,10 @@ import re
 import base64
 import traceback
 import html
+import os
+import shutil
+from typing import List
+from pydantic import BaseModel
 from PIL import Image as PILImage
 
 app = FastAPI()
@@ -35,8 +39,19 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-) 
+)
 
+# --- STORAGE SETUP ---
+IMPORTS_DIR = "imports"
+PROJECTS_DIR = "projects"
+os.makedirs(IMPORTS_DIR, exist_ok=True)
+os.makedirs(PROJECTS_DIR, exist_ok=True)
+
+class ProjectSaveRequest(BaseModel):
+    name: str
+    data: dict
+
+# --- HELPERS ---
 def add_style(doc, name, family, text_props=None, paragraph_props=None, table_col_props=None, table_cell_props=None, table_props=None, graphic_props=None):
     """
     Helper function to create and register an ODF style.
@@ -253,9 +268,7 @@ def process_node(node_id, craft_data, parent_element, doc):
                 p.addElement(frame)
 
             except Exception as e:
-                # Log invalid image but continue document generation
                 print(f"Image Export Error: {str(e)}")
-                # We do not print tracebacks into the document anymore to avoid "weird lines" if they look like code
                 p.addText("[AFBEELDING ERROR]")
         else:
             p.addText("[AFBEELDING ZONDER DATA]")
@@ -383,6 +396,8 @@ def process_node(node_id, craft_data, parent_element, doc):
         for child_id in children_ids:
             process_node(child_id, craft_data, parent_element, doc)
 
+# --- ENDPOINTS ---
+
 @app.post("/generate-odt")
 async def generate_odt(payload: dict):
     try:
@@ -411,6 +426,78 @@ async def generate_odt(payload: dict):
     except Exception as e:
         print(f"Error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- STORAGE ENDPOINTS ---
+
+@app.post("/upload-odt")
+async def upload_odt(file: UploadFile = File(...)):
+    try:
+        path = os.path.join(IMPORTS_DIR, file.filename)
+        with open(path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        return {"filename": file.filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/imports")
+def list_imports():
+    try:
+        files = [f for f in os.listdir(IMPORTS_DIR) if f.endswith(".odt")]
+        return files
+    except Exception as e:
+        return []
+
+@app.get("/imports/{filename}")
+def get_import(filename: str):
+    path = os.path.join(IMPORTS_DIR, filename)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="File not found")
+    return FileResponse(path)
+
+@app.delete("/imports/{filename}")
+def delete_import(filename: str):
+    path = os.path.join(IMPORTS_DIR, filename)
+    if os.path.exists(path):
+        os.remove(path)
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="File not found")
+
+@app.post("/save-project")
+async def save_project(payload: ProjectSaveRequest):
+    try:
+        safe_name = "".join([c for c in payload.name if c.isalnum() or c in ('-', '_')])
+        if not safe_name: safe_name = "untitled"
+        path = os.path.join(PROJECTS_DIR, f"{safe_name}.json")
+        with open(path, "w") as f:
+            json.dump(payload.data, f)
+        return {"status": "saved", "name": safe_name}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/projects")
+def list_projects():
+    try:
+        files = [f.replace(".json", "") for f in os.listdir(PROJECTS_DIR) if f.endswith(".json")]
+        return files
+    except Exception as e:
+        return []
+
+@app.get("/projects/{name}")
+def get_project(name: str):
+    path = os.path.join(PROJECTS_DIR, f"{name}.json")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Project not found")
+    with open(path, "r") as f:
+        data = json.load(f)
+    return data
+
+@app.delete("/projects/{name}")
+def delete_project(name: str):
+    path = os.path.join(PROJECTS_DIR, f"{name}.json")
+    if os.path.exists(path):
+        os.remove(path)
+        return {"status": "deleted"}
+    raise HTTPException(status_code=404, detail="Project not found")
 
 if __name__ == "__main__":
     import uvicorn
