@@ -2,4 +2,3 @@ odfpy
 fastapi
 uvicorn
 Pillow
-python-multipart
