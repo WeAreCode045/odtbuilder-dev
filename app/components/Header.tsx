@@ -8,7 +8,7 @@ export const Header: React.FC = () => {
   const { query, actions } = useEditor();
   const [isLoading, setIsLoading] = useState(false);
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-  const BACKEND_URL = "https://odt-generator.code045.nl";
+  const BACKEND_URL = "http://odt-builder_odtbuilder-dev_backend:3100";
 
   // --- ACTIONS ---
 

@@ -7,7 +7,7 @@ export const ExportButton = () => {
   const handleExport = async () => {
     const json = query.serialize(); // Craft.js state
     
-    const response = await fetch("https://odt-generator.code045.nl/generate-odt", {
+    const response = await fetch("http://odt-builder_odtbuilder-dev_backend:3100/generate-odt", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

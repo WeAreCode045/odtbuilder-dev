@@ -14,7 +14,7 @@ export const DashboardModal: React.FC<DashboardModalProps> = ({ isOpen, onClose,
     const [projects, setProjects] = useState<string[]>([]);
     const [imports, setImports] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const BACKEND_URL = "https://odt-generator.code045.nl";
+    const BACKEND_URL = "http://odt-builder_odtbuilder-dev_backend:3100";
 
     useEffect(() => {
         if (isOpen) {

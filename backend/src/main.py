@@ -31,6 +31,8 @@ origins = [
     "http://localhost:5173",
     "https://odtbuilder.code045.nl",
     "https://odt-generator.code045.nl",
+    "http://odt-builder_odtbuilder-dev_frontend:5173",
+    "http://odt-builder_odtbuilder-dev_frontend:3010",
 ]
 
 app.add_middleware(
