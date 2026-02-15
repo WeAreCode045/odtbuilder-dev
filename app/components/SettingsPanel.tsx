@@ -38,29 +38,36 @@ export const SettingsPanel: React.FC = () => {
 
       <div className="p-4 flex-1 overflow-y-auto">
         {selected ? (
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold bg-gray-100 px-2 py-1 rounded text-gray-700">
-                    {selected.name}
-                </span>
-                {selected.isDeletable && (
-                    <button
-                        className="text-xs text-red-500 hover:text-red-700 underline"
-                        onClick={() => {
-                            actions.delete(selected.id);
-                        }}
-                    >
-                        Verwijderen
-                    </button>
-                )}
+          // If the selected node is the Placeholder component, show placeholder groups
+          selected.name === 'Placeholder' ? (
+            <PlaceholderArea />
+          ) : (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold bg-gray-100 px-2 py-1 rounded text-gray-700">
+                      {selected.name}
+                  </span>
+                  {selected.isDeletable && (
+                      <button
+                          className="text-xs text-red-500 hover:text-red-700 underline"
+                          onClick={() => {
+                              actions.delete(selected.id);
+                          }}
+                      >
+                          Verwijderen
+                      </button>
+                  )}
+              </div>
+
+              <div className="border-t border-gray-100 my-2"></div>
+
+              {selected.settings && React.createElement(selected.settings)}
             </div>
-
-            <div className="border-t border-gray-100 my-2"></div>
-
-            {selected.settings && React.createElement(selected.settings)}
-          </div>
+          )
         ) : (
-          <PlaceholderArea />
+          <div className="flex flex-col items-center justify-center h-full text-center p-4">
+            <p className="text-sm text-gray-400">Selecteer een component om de instellingen te bekijken.</p>
+          </div>
         )}
       </div>
     </aside>

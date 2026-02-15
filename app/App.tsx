@@ -11,6 +11,7 @@ import { Document } from './components/user/Document';
 import { Page } from './components/user/Page';
 import { Titel } from './components/user/Titel';
 import { Tekst } from './components/user/Tekst';
+import { Placeholder } from './components/user/Placeholder';
 import { GastInformatie } from './components/user/GastInformatie';
 import { Afbeelding } from './components/user/Afbeelding';
 import { Rij } from './components/user/Rij';
@@ -21,6 +22,7 @@ const resolver = {
   Page,
   Titel,
   Tekst,
+  Placeholder,
   GastInformatie,
   Afbeelding,
   Row: Rij,      // Map Rij component to 'Row' for export compatibility
