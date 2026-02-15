@@ -25,31 +25,31 @@ const PlaceholdersPanel: React.FC<Props> = ({ onInsert }) => {
       <h3 className="text-lg font-semibold mb-3">Placeholders</h3>
 
       {!active ? (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-2">
           {Object.keys(PLACEHOLDER_GROUPS).map((key) => (
             <button
               key={key}
               onClick={() => setActive(key)}
-              className="text-sm p-3 rounded border transition-all text-left shadow-sm bg-white border-gray-200 hover:border-blue-300"
+              className="w-full text-xs py-2 px-3 rounded border transition-all text-left shadow-sm bg-white border-gray-200 hover:border-blue-300"
             >
-              <div className="font-medium text-gray-800">{PLACEHOLDER_GROUPS[key].title}</div>
-              <div className="text-xs text-gray-500 mt-1">{PLACEHOLDER_GROUPS[key].items.length} placeholders</div>
+              <div className="font-medium text-gray-800 text-sm">{PLACEHOLDER_GROUPS[key].title}</div>
+              <div className="text-[11px] text-gray-500 mt-0.5">{PLACEHOLDER_GROUPS[key].items.length} placeholders</div>
             </button>
           ))}
         </div>
       ) : (
         <div className="mt-1">
           <div className="flex items-center gap-2 mb-3">
-            <button onClick={() => setActive(null)} className="text-sm text-blue-600 px-2 py-1 border rounded">Terug</button>
+            <button onClick={() => setActive(null)} className="text-xs text-blue-600 px-2 py-1 border rounded">Terug</button>
             <h4 className="text-sm font-semibold">{PLACEHOLDER_GROUPS[active].title}</h4>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col gap-1">
             {PLACEHOLDER_GROUPS[active].items.map((it, idx) => (
               <button
                 key={idx}
                 onClick={() => handleInsert(it.code)}
-                className="text-xs p-2 border rounded text-left hover:bg-gray-50"
+                className="w-full text-[13px] py-2 px-2 border rounded text-left hover:bg-gray-50"
                 title={it.desc || it.code}
               >
                 <div className="truncate">{it.code}</div>
