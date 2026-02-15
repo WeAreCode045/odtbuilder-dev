@@ -9,16 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "^5.1.4",
-    "react-dom": "^19.2.4",
-    "path": "^0.12.7",
     "react": "^19.2.4",
-    "vite": "^7.3.1",
+    "react-dom": "^19.2.4",
     "lucide-react": "^0.564.0",
-    "jszip": "^3.10.1",
-    "url": "^0.11.4",
+    "@craftjs/core": "^0.2.12",
     "react-contenteditable": "^3.3.7",
-    "@craftjs/core": "^0.2.12"
+    "jszip": "^3.10.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

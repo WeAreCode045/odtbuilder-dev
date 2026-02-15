@@ -67,16 +67,35 @@ const RijSettings = () => {
 
     const updateColumnCount = (count: number) => {
         if (count > currentCols) {
+            // Adding columns:
+            // 1. Reset existing columns to 'auto' to ensure fair distribution
+            childIds.forEach(childId => {
+                actions.setProp(childId, (props: any) => props.width = 'auto');
+            });
+
+            // 2. Add new columns as 'auto'
             const needed = count - currentCols;
             for (let i = 0; i < needed; i++) {
                 const node = query.parseReactElement(<Element is={Kolom} canvas width="auto" padding={8} />).toNodeTree();
                 actions.addNodeTree(node, id);
             }
         } else if (count < currentCols) {
+            // Removing columns
             const toRemove = currentCols - count;
             for (let i = 0; i < toRemove; i++) {
                 const removeId = childIds[childIds.length - 1 - i];
                 actions.delete(removeId);
+            }
+            
+            // Fix layout after removal
+            if (count === 1) {
+                // If only 1 column remains, force it to 100%
+                actions.setProp(childIds[0], (props: any) => props.width = '100%');
+            } else {
+                // Otherwise reset remaining to auto for flow
+                for (let i = 0; i < count; i++) {
+                     actions.setProp(childIds[i], (props: any) => props.width = 'auto');
+                }
             }
         }
     };
