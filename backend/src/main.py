@@ -369,7 +369,8 @@ def process_node(node_id, craft_data, parent_element, doc):
 
             cell_props = {
                 "padding": padding_cm,
-                "border": "none" 
+                # Use zero-width border so ODF viewers don't render default table lines
+                "border": "0pt"
             }
             
             if col_bg and col_bg != "transparent":
