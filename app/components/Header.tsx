@@ -12,10 +12,7 @@ export const Header: React.FC = () => {
     setIsLoading(true);
     try {
       const json = query.serialize();
-      const isLocal = window.location.hostname === 'localhost';
-      const BACKEND_URL = isLocal 
-        ? "http://localhost:8000/generate-odt" 
-        : "https://odt-generator.code045.nl/generate-odt";
+      const BACKEND_URL = "https://odt-generator.code045.nl/generate-odt";
 
       const response = await fetch(BACKEND_URL, {
         method: "POST",
