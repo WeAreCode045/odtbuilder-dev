@@ -24,24 +24,24 @@ const PlaceholdersPanel: React.FC<Props> = ({ onInsert }) => {
     <div className="p-3 bg-white rounded shadow max-h-[70vh] overflow-auto">
       <h3 className="text-lg font-semibold mb-3">Placeholders</h3>
 
-      <div className="grid grid-cols-2 gap-2">
-        {Object.keys(PLACEHOLDER_GROUPS).map((key) => (
-          <button
-            key={key}
-            onClick={() => setActive(active === key ? null : key)}
-            className={`text-sm p-3 rounded border transition-all text-left shadow-sm ${active === key ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200 hover:border-blue-300'}`}
-          >
-            <div className="font-medium text-gray-800">{PLACEHOLDER_GROUPS[key].title}</div>
-            <div className="text-xs text-gray-500 mt-1">{PLACEHOLDER_GROUPS[key].items.length} placeholders</div>
-          </button>
-        ))}
-      </div>
-
-      {active && (
-        <div className="mt-3">
-          <div className="flex items-center justify-between mb-2">
+      {!active ? (
+        <div className="grid grid-cols-2 gap-2">
+          {Object.keys(PLACEHOLDER_GROUPS).map((key) => (
+            <button
+              key={key}
+              onClick={() => setActive(key)}
+              className="text-sm p-3 rounded border transition-all text-left shadow-sm bg-white border-gray-200 hover:border-blue-300"
+            >
+              <div className="font-medium text-gray-800">{PLACEHOLDER_GROUPS[key].title}</div>
+              <div className="text-xs text-gray-500 mt-1">{PLACEHOLDER_GROUPS[key].items.length} placeholders</div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-1">
+          <div className="flex items-center gap-2 mb-3">
+            <button onClick={() => setActive(null)} className="text-sm text-blue-600 px-2 py-1 border rounded">Terug</button>
             <h4 className="text-sm font-semibold">{PLACEHOLDER_GROUPS[active].title}</h4>
-            <button className="text-xs text-blue-600" onClick={() => setActive(null)}>Sluit</button>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
