@@ -3,6 +3,7 @@ import { Editor, Frame, Element } from '@craftjs/core';
 import { Header } from './components/Header';
 import { Toolbox } from './components/Toolbox';
 import { SettingsPanel } from './components/SettingsPanel';
+import { PlaceholderProvider } from './components/placeholders/placeholderContext';
 import { Viewport } from './components/Viewport';
 
 // User Components
@@ -30,6 +31,7 @@ const App: React.FC = () => {
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-gray-100">
       <Editor resolver={resolver}>
+        <PlaceholderProvider>
         <Header />
         
         <div className="flex flex-1 overflow-hidden relative">
@@ -49,6 +51,7 @@ const App: React.FC = () => {
           {/* Right Sidebar */}
           <SettingsPanel />
         </div>
+        </PlaceholderProvider>
       </Editor>
     </div>
   );

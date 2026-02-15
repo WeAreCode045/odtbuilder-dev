@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNode } from '@craftjs/core';
 import ContentEditable from 'react-contenteditable';
 import { AlignLeft, AlignCenter, AlignRight, AlignJustify, Bold, Italic, Underline, Type } from 'lucide-react';
@@ -25,10 +25,123 @@ export const Tekst = ({
   }));
 
   const [editableContent, setEditableContent] = useState(text);
+  const contentRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     setEditableContent(text);
   }, [text]);
+
+  // Helpers to get/set caret offset inside element (character offset)
+  const getCaretCharacterOffsetWithin = (element: Node) => {
+    const sel = window.getSelection && window.getSelection();
+    if (!sel || sel.rangeCount === 0) return 0;
+    const range = sel.getRangeAt(0);
+    const preRange = range.cloneRange();
+    preRange.selectNodeContents(element);
+    preRange.setEnd(range.startContainer, range.startOffset);
+    const text = preRange.toString();
+    return text.length;
+  };
+
+  const setCaretPosition = (element: Node, chars: number) => {
+    const node = element;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    let remaining = chars;
+
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null as any, false);
+    let currentNode = walker.nextNode() as Text | null;
+    while (currentNode) {
+      if (currentNode.nodeValue) {
+        if (currentNode.nodeValue.length >= remaining) {
+          range.setStart(currentNode, remaining);
+          range.collapse(true);
+          const sel = window.getSelection && window.getSelection();
+          if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+          return true;
+        } else {
+          remaining -= currentNode.nodeValue.length;
+        }
+      }
+      currentNode = walker.nextNode() as Text | null;
+    }
+
+    // Fallback: place at end
+    range.selectNodeContents(node);
+    range.collapse(false);
+    const sel = window.getSelection && window.getSelection();
+    if (sel) {
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+    return false;
+  };
+
+  // Register a global insertion function when this node is selected
+  useEffect(() => {
+    const insertFn = (code: string) => {
+      const el = contentRef.current;
+      if (!el) return false;
+
+      const sel = window.getSelection && window.getSelection();
+      let caretOffset = 0;
+      try {
+        if (sel && sel.rangeCount > 0 && el.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+          // Save current caret offset
+          caretOffset = getCaretCharacterOffsetWithin(el);
+
+          // insert text at range
+          const range = sel.getRangeAt(0);
+          range.deleteContents();
+          const textNode = document.createTextNode(code);
+          range.insertNode(textNode);
+          // move caret after inserted text node
+          const newOffset = caretOffset + code.length;
+          // update content
+          const newHtml = el.innerHTML;
+          setEditableContent(newHtml);
+
+          // set prop and attempt to restore caret after update
+          setProp((props: any) => props.text = newHtml, 0);
+          setTimeout(() => setCaretPosition(el, newOffset), 60);
+        } else {
+          // append at end
+          el.focus();
+          el.innerHTML = (el.innerHTML || '') + code;
+          const newHtml = el.innerHTML;
+          setEditableContent(newHtml);
+          setProp((props: any) => props.text = newHtml, 0);
+        }
+
+        return true;
+      } catch (e) {
+        // fallback: append
+        el.innerHTML = (el.innerHTML || '') + code;
+        const newHtml = el.innerHTML;
+        setEditableContent(newHtml);
+        setProp((props: any) => props.text = newHtml, 0);
+        return false;
+      }
+    };
+
+    if (selected) {
+      (window as any).__odtInsertPlaceholder = insertFn;
+    } else {
+      // If unselecting, remove global if it matches
+      if ((window as any).__odtInsertPlaceholder === insertFn) {
+        delete (window as any).__odtInsertPlaceholder;
+      }
+    }
+
+    return () => {
+      if ((window as any).__odtInsertPlaceholder === insertFn) {
+        delete (window as any).__odtInsertPlaceholder;
+      }
+    };
+  }, [selected, setProp]);
 
   const execCmd = (cmd: string) => {
       document.execCommand(cmd, false, undefined);
@@ -52,6 +165,7 @@ export const Tekst = ({
       )}
 
       <ContentEditable
+        innerRef={contentRef as any}
         html={editableContent}
         disabled={!selected}
         onChange={(e) => {

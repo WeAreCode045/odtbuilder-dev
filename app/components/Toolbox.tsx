@@ -1,6 +1,8 @@
 import React from 'react';
 import { useEditor, Element } from '@craftjs/core';
 import PlaceholdersPanel from './placeholders/PlaceholdersPanel';
+import PLACEHOLDER_GROUPS from './placeholders/placeholdersData';
+import { usePlaceholderUI } from './placeholders/placeholderContext';
 import { Type, AlignLeft, User, LayoutTemplate, Image as ImageIcon, Columns, Square } from 'lucide-react';
 
 // Import components to create instances for dragging
@@ -21,6 +23,22 @@ export const Toolbox: React.FC = () => {
       return null;
     }
   })();
+
+  const { setActiveGroup, activeGroup } = usePlaceholderUI();
+
+  const GroupCard: React.FC<{ groupKey: string }> = ({ groupKey }) => {
+    const group = (PLACEHOLDER_GROUPS as any)[groupKey];
+    const active = activeGroup === groupKey;
+    return (
+      <button
+        onClick={() => setActiveGroup(active ? null : groupKey)}
+        className={`text-left p-2 rounded border ${active ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'} text-sm`}
+      >
+        <div className="font-medium text-gray-700 truncate">{group.title}</div>
+        <div className="text-xs text-gray-400 mt-1">{group.items.length} items</div>
+      </button>
+    );
+  };
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col z-10">
@@ -102,16 +120,12 @@ export const Toolbox: React.FC = () => {
         </div>
 
         <div className="pt-3">
-          <PlaceholdersPanel onInsert={(code) => {
-            if (selectedId) {
-              actions.setProp(selectedId, (props: any) => {
-                props.text = (props.text || '') + code;
-              });
-            } else {
-              if (navigator && navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {});
-              alert('Geen tekst geselecteerd — placeholder gekopieerd naar klembord.');
-            }
-          }} />
+          <div className="mb-2 text-xs font-semibold text-gray-400">Plaatsaanduiding categorieën</div>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.keys(PLACEHOLDER_GROUPS).map((key) => (
+              <GroupCard key={key} groupKey={key} />
+            ))}
+          </div>
         </div>
       </div>
 

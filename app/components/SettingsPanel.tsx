@@ -1,9 +1,12 @@
 import React from 'react';
 import { useEditor } from '@craftjs/core';
 import { Settings2 } from 'lucide-react';
+import PLACEHOLDER_GROUPS from './placeholders/placeholdersData';
+import { usePlaceholderUI } from './placeholders/placeholderContext';
+import { Tekst } from './user/Tekst';
 
 export const SettingsPanel: React.FC = () => {
-  const { selected, actions } = useEditor((state, query) => {
+  const { selected, actions, query, connectors } = useEditor((state, query) => {
     const [currentNodeId] = state.events.selected;
     let selected;
 
@@ -18,8 +21,13 @@ export const SettingsPanel: React.FC = () => {
 
     return {
       selected,
+      actions: query && query, // passthrough (not used here)
+      query,
+      connectors: (null as any),
     };
   });
+
+  const { activeGroup, setActiveGroup } = usePlaceholderUI();
 
   return (
     <aside className="w-72 bg-white border-l border-gray-200 flex flex-col z-10">
@@ -46,17 +54,66 @@ export const SettingsPanel: React.FC = () => {
                     </button>
                 )}
             </div>
-            
+
             <div className="border-t border-gray-100 my-2"></div>
-            
+
             {selected.settings && React.createElement(selected.settings)}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center p-4">
-            <p className="text-sm text-gray-400">Selecteer een component op het canvas om instellingen te wijzigen.</p>
-          </div>
+          <PlaceholderArea />
         )}
       </div>
     </aside>
   );
+
+  function PlaceholderArea() {
+    if (!activeGroup) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-center p-4">
+          <p className="text-sm text-gray-400">Klik een placeholder categorie aan in de linkerkolom om de placeholders te bekijken.</p>
+        </div>
+      );
+    }
+
+    const group = (PLACEHOLDER_GROUPS as any)[activeGroup];
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold">{group.title}</h3>
+          <button className="text-xs text-gray-500" onClick={() => setActiveGroup(null)}>Sluit</button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          {group.items.map((it: any, idx: number) => (
+            <PlaceholderCard key={idx} code={it.code} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  function PlaceholderCard({ code }: { code: string }) {
+    const { connectors } = useEditor();
+    return (
+      <div
+        ref={(ref) => {
+          if (!ref) return;
+          // Make card draggable to create a Tekst node prefilled with the placeholder
+          connectors.create(ref, <Tekst text={code} fontSize={14} color="#4a5568" textAlign="left" fontFamily="inherit" fontWeight="normal" />);
+        }}
+        className="p-2 border border-gray-200 rounded-sm bg-white text-xs cursor-grab hover:shadow-sm"
+        onClick={() => {
+          const inserter = (window as any).__odtInsertPlaceholder;
+          if (inserter && typeof inserter === 'function') {
+            inserter(code);
+          } else {
+            if (navigator && navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {});
+            alert('Placeholder gekopieerd naar klembord');
+          }
+        }}
+      >
+        <div className="truncate">{code}</div>
+      </div>
+    );
+  }
 };
