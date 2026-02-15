@@ -197,58 +197,71 @@ const TekstSettings = () => {
     fontWeight: node.data.props.fontWeight,
   }));
 
+  const [tab, setTab] = React.useState<'style' | 'placeholders'>('style');
+
+  const handleInsert = (code: string) => {
+    const inserter = (window as any).__odtInsertPlaceholder;
+    if (inserter && typeof inserter === 'function') {
+      inserter(code);
+    } else {
+      setProp((props: any) => {
+        props.text = (props.text || '') + code;
+      });
+    }
+  };
+
   return (
     <div className="space-y-4">
-       <div className="flex flex-col gap-1">
-        <label className="text-xs text-gray-500">Lettergrootte (px)</label>
-        <input 
-          type="number" 
-          value={fontSize} 
-          onChange={(e) => setProp((props: TekstProps) => props.fontSize = parseInt(e.target.value, 10))}
-          className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 text-gray-700"
-        />
+      <div className="flex gap-2">
+        <button onClick={() => setTab('style')} className={`flex-1 py-2 text-sm rounded ${tab === 'style' ? 'bg-white border border-gray-300 shadow-sm' : 'bg-gray-50 text-gray-600'}`}>Styling</button>
+        <button onClick={() => setTab('placeholders')} className={`flex-1 py-2 text-sm rounded ${tab === 'placeholders' ? 'bg-white border border-gray-300 shadow-sm' : 'bg-gray-50 text-gray-600'}`}>Placeholders</button>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-xs text-gray-500">Font Familie</label>
-        <select
-          value={fontFamily}
-          onChange={(e) => setProp((props: TekstProps) => props.fontFamily = e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded text-sm bg-white text-gray-700"
-        >
-            <option value="inherit">Standaard</option>
-            <option value="Arial, sans-serif">Arial</option>
-            <option value="Times New Roman, serif">Times New Roman</option>
-            <option value="Courier New, monospace">Courier New</option>
-            <option value="Georgia, serif">Georgia</option>
-            <option value="Verdana, sans-serif">Verdana</option>
-        </select>
-      </div>
-
-       <div className="flex flex-col gap-1">
-        <label className="text-xs text-gray-500">Tekstkleur</label>
-        <div className="flex gap-2">
+      {tab === 'style' ? (
+        <>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Lettergrootte (px)</label>
             <input 
-                type="color" 
-                value={color} 
-                onChange={(e) => setProp((props: TekstProps) => props.color = e.target.value)}
-                className="w-8 h-8 p-0 border-0 rounded cursor-pointer"
+              type="number" 
+              value={fontSize} 
+              onChange={(e) => setProp((props: TekstProps) => props.fontSize = parseInt(e.target.value, 10))}
+              className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500 text-gray-700"
             />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Font Familie</label>
+            <select
+              value={fontFamily}
+              onChange={(e) => setProp((props: TekstProps) => props.fontFamily = e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded text-sm bg-white text-gray-700"
+            >
+                <option value="inherit">Standaard</option>
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Times New Roman, serif">Times New Roman</option>
+                <option value="Courier New, monospace">Courier New</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-gray-500">Tekstkleur</label>
+            <div className="flex gap-2">
+                <input 
+                    type="color" 
+                    value={color} 
+                    onChange={(e) => setProp((props: TekstProps) => props.color = e.target.value)}
+                    className="w-8 h-8 p-0 border-0 rounded cursor-pointer"
+                />
+            </div>
+          </div>
+        </>
+      ) : (
+        <div>
+          <PlaceholdersPanel onInsert={handleInsert} />
         </div>
-      </div>
-      <div className="border-t pt-3">
-        <PlaceholdersPanel onInsert={(code: string) => {
-          const inserter = (window as any).__odtInsertPlaceholder;
-          if (inserter && typeof inserter === 'function') {
-            inserter(code);
-          } else {
-            // fallback: append to text prop
-            setProp((props: any) => {
-              props.text = (props.text || '') + code;
-            });
-          }
-        }} />
-      </div>
+      )}
     </div>
   );
 };
