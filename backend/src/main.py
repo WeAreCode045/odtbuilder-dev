@@ -31,8 +31,6 @@ origins = [
     "http://localhost:5173",
     "https://odtbuilder.code045.nl",
     "https://odt-generator.code045.nl",
-    "http://odt-builder_odtbuilder-dev_frontend:5173",
-    "http://odt-builder_odtbuilder-dev_frontend:3010",
 ]
 
 app.add_middleware(
@@ -503,4 +501,4 @@ def delete_project(name: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=80)
+    uvicorn.run(app, host="0.0.0.0", port=3100)
