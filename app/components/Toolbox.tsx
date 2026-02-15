@@ -10,6 +10,7 @@ import { Titel } from './user/Titel';
 import { Tekst } from './user/Tekst';
 import { GastInformatie } from './user/GastInformatie';
 import { Afbeelding } from './user/Afbeelding';
+import { Tag } from 'lucide-react';
 import { Rij } from './user/Rij';
 import { Kolom } from './user/Kolom';
 
@@ -49,6 +50,14 @@ export const Toolbox: React.FC = () => {
       <div className="p-4 flex flex-col gap-3 overflow-y-auto">
         {/* Basic Text Elements */}
         <div className="text-xs font-semibold text-gray-400 mt-2 mb-1">Inhoud</div>
+        
+        <div
+          onClick={() => setActiveGroup('hotelContact')}
+          className="flex items-center gap-3 p-3 bg-white border border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-blue-500 hover:shadow-sm transition-all"
+        >
+          <Tag size={18} className="text-gray-600" />
+          <span className="text-sm font-medium text-gray-700">Plaatsaanduidingen</span>
+        </div>
         
         <div 
           ref={(ref) => {
