@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { register, login, getAccount } from '../utils/appwrite';
+import useAuth from '../hooks/useAuth';
 
 interface Props {
-  onLogin: (user: any) => void;
+  onLogin?: (user: any) => void;
 }
 
 export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
+  const { login, register } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,13 +21,12 @@ export const LoginScreen: React.FC<Props> = ({ onLogin }) => {
     try {
       if (isRegister) {
         await register(email, password, name || undefined);
-        // After register, create a session
         await login(email, password);
       } else {
         await login(email, password);
       }
-      const acct = await getAccount();
-      onLogin(acct);
+      // let AuthProvider update context; optional callback
+      if (onLogin) onLogin(true);
     } catch (err: any) {
       setError(err?.message || String(err));
     } finally {
