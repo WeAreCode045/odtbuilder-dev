@@ -3,6 +3,7 @@ import { useEditor } from '@craftjs/core';
 import { Download, FileText, Save, FolderOpen, Loader2 } from 'lucide-react';
 import { DashboardModal } from './DashboardModal';
 import { parseOdt } from '../utils/odtImporter';
+import useAuth from '../hooks/useAuth';
 
 export const Header: React.FC = () => {
   const { query, actions } = useEditor();
@@ -146,6 +147,8 @@ export const Header: React.FC = () => {
                     <Download size={16} />
                     Exporteer ODT
                 </button>
+                {/* Show user + logout */}
+                <UserControls />
             </>
             )}
         </div>
@@ -160,4 +163,28 @@ export const Header: React.FC = () => {
         />
     </>
   );
+};
+
+const UserControls: React.FC = () => {
+    const { user, logout } = useAuth();
+    const [busy, setBusy] = useState(false);
+
+    const handleLogout = async () => {
+        setBusy(true);
+        try {
+            await logout();
+            window.location.reload();
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div className="flex items-center gap-2">
+            <div className="text-sm text-gray-700">{user?.name || user?.email}</div>
+            <button onClick={handleLogout} disabled={busy} className="px-3 py-1 bg-red-600 text-white rounded text-sm">
+                {busy ? 'Uitloggen...' : 'Uitloggen'}
+            </button>
+        </div>
+    );
 };

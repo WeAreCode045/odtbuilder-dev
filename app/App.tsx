@@ -4,6 +4,8 @@ import { Header } from './components/Header';
 import { Toolbox } from './components/Toolbox';
 import { SettingsPanel } from './components/SettingsPanel';
 import { Viewport } from './components/Viewport';
+import { LoginScreen } from './components/LoginScreen';
+import { AuthProvider, useAuth } from './hooks/useAuth';
 
 // User Components
 import { Document } from './components/user/Document';
@@ -26,7 +28,11 @@ const resolver = {
   Column: Kolom  // Map Kolom component to 'Column' for export compatibility
 };
 
-const App: React.FC = () => {
+const InnerApp: React.FC = () => {
+  const { user } = useAuth();
+
+  if (!user) return <LoginScreen onLogin={() => {}} />;
+
   return (
     <div className="h-screen w-full flex flex-col overflow-hidden bg-gray-100">
       <Editor resolver={resolver}>
@@ -51,6 +57,14 @@ const App: React.FC = () => {
         </div>
       </Editor>
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <InnerApp />
+    </AuthProvider>
   );
 };
 
